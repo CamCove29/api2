@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, date  # Asegúrate de importar 'date' aquí
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from fastapi.responses import JSONResponse
@@ -30,8 +29,7 @@ class DatosUsuario(BaseModel):
     apellidos: str
     numero_telefono: str
     edad: int
-    fecha_nacimiento: date
-
+    fecha_nacimiento: date  # Aquí se puede usar 'date' ya que fue importado
 
 # Get echo test for load balancer's health check
 @app.get("/")
