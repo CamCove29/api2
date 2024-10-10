@@ -29,13 +29,12 @@ class DatosUsuario(BaseModel):
     apellidos: str
     numero_telefono: str
     edad: int
-    fecha_nacimiento: date  # Aquí se puede usar 'date' ya que fue importado
+    direccion: str # Aquí se puede usar 'date' ya que fue importado
 
 # Get echo test for load balancer's health check
 @app.get("/")
 def get_echo_test():
     return {"message": "Echo Test OK"}
-
 
 # Obtener todos los usuarios
 @app.get("/usuarios")
@@ -124,11 +123,11 @@ def create_datos_usuario(user_id: int, datos_usuario: DatosUsuario):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO Datos_Usuario (ID_usuario, nombres, apellidos, numero_telefono, edad, fecha_nacimiento)
+        INSERT INTO Datos_Usuario (ID_usuario, nombres, apellidos, numero_telefono, edad, direccion)
         VALUES (%s, %s, %s, %s, %s, %s)
     """, (
         user_id, datos_usuario.nombres, datos_usuario.apellidos, 
-        datos_usuario.numero_telefono, datos_usuario.edad, datos_usuario.fecha_nacimiento))
+        datos_usuario.numero_telefono, datos_usuario.edad, datos_usuario.direccion))  # Actualiza aquí
     conn.commit()
     cursor.close()
     conn.close()
@@ -141,11 +140,11 @@ def update_datos_usuario(user_id: int, datos_usuario: DatosUsuario):
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE Datos_Usuario 
-        SET nombres = %s, apellidos = %s, numero_telefono = %s, edad = %s, fecha_nacimiento = %s
+        SET nombres = %s, apellidos = %s, numero_telefono = %s, edad = %s, direccion = %s
         WHERE ID_usuario = %s
     """, (
         datos_usuario.nombres, datos_usuario.apellidos, datos_usuario.numero_telefono, 
-        datos_usuario.edad, datos_usuario.fecha_nacimiento, user_id))
+        datos_usuario.edad, datos_usuario.direccion, user_id))  # Actualiza aquí
     conn.commit()
     cursor.close()
     conn.close()
@@ -160,4 +159,4 @@ def delete_datos_usuario(user_id: int):
     conn.commit()
     cursor.close()
     conn.close()
-    return {"message": "Datos del usuario eliminados exitosamente"}
+  
