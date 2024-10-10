@@ -13,7 +13,7 @@ def get_db_connection():
         database="db_clients",
         user="root",
         password="utec",
-        port="8007"
+        port="8010"
     )
     return conn
 
