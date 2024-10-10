@@ -5,7 +5,7 @@ from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from fastapi.responses import JSONResponse
-import httpx
+
 app = FastAPI()
 
 def get_db_connection():
@@ -14,7 +14,7 @@ def get_db_connection():
         database="db_clients",
         user="root",
         password="utec",
-        port="8006"
+        port="8007"
     )
     return conn
 
