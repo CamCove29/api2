@@ -1,20 +1,28 @@
-# Usar una imagen base de Python
-FROM python:3.11-slim
+# Usa la imagen base de Python 3 slim
+FROM python:3.9-slim
 
-# Establecer el directorio de trabajo en el contenedor
+# Establece el directorio de trabajo en /programas/api-clients
 WORKDIR /app
 
-# Copiar el archivo de requerimientos
+# Copiar el archivo de dependencias
 COPY requirements.txt .
 
-# Instalar las dependencias
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el código de la aplicación al contenedor
+# Instala las dependencias necesarias
+RUN pip install --no-cache-dir -r requirements.txt\
+    && pip3 install pydantic \
+    && pip3 install "fastapi[standard]" \
+    && pip3 install pydantic \
+    && pip3 install psycopg2-binary
+
+RUN pip install --no-cache-dir fastapi[all] psycopg2-binary httpx
+
+# Copia todos los archivos al contenedor
 COPY . .
 
-# Exponer el puerto en el que la aplicación estará corriendo
-EXPOSE 8081
+# Expone el puerto 8000
+EXPOSE 8082
 
-# Comando para ejecutar la aplicación
-CMD ["python", "app.py"]
+# Comando para ejecutar la aplicación FastAPI
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8082"]
+

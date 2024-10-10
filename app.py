@@ -1,26 +1,59 @@
-from flask import Flask, jsonify, request
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from pydantic import BaseModel
+from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from fastapi.responses import JSONResponse
+import httpx
+app = FastAPI()
 
-app = Flask(__name__)
-
-
-# Configuración de la conexión a PostgreSQL
 def get_db_connection():
     conn = psycopg2.connect(
-        host="100.27.62.167",
+        host="3.85.121.200",
         database="db_clients",
         user="root",
         password="utec",
-        port="8081"
+        port="8006"
     )
     return conn
 
+# Modelo para los datos de un cliente
+class Cliente(BaseModel):
+    ID_cliente: int  # Campo obligatorio
+    Nombre: str
+    Apellido: str
+    Fecha_nacimiento: str  # Utiliza formato ISO para fechas (YYYY-MM-DD)
+    Email: str
+    Telefono: str  # Campo obligatorio
+    Direccion: str  # Campo obligatorio
+    Fecha_registro: datetime  # Campo obligatorio
 
-### CRUD para la tabla "Clientes" ###
+# Modelo para el historial de un cliente
+class Historial(BaseModel):
+    ID_historial: int  # Campo obligatorio
+    ID_cliente: int  # Campo obligatorio
+    ID_libro: int  # Campo obligatorio
+    Fecha_lectura: datetime  # Campo obligatorio, generado automáticamente
+
+# Modelo para las valoraciones de un cliente
+class Valoracion(BaseModel):
+    ID_valoracion: int  # Campo obligatorio
+    ID_libro: int  # Campo obligatorio
+    ID_cliente: int  # Campo obligatorio
+    Puntuacion: int  # Asegúrate de que esté entre 1 y 5
+    Comentario: str  # Campo obligatorio
+    Fecha_valoracion: datetime  # Campo obligatorio, generado automáticamente
+
+
+# Get echo test for load balancer's health check
+@app.get("/")
+def get_echo_test():
+    return {"message": "Echo Test OK"}
+
 
 # Obtener todos los clientes
-@app.route('/clientes', methods=['GET'])
+@app.get("/clientes")
 def get_clientes():
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -28,89 +61,86 @@ def get_clientes():
     clientes = cursor.fetchall()
     cursor.close()
     conn.close()
-    return jsonify(clientes), 200
+    return JSONResponse(content=clientes)
 
 
 # Obtener un cliente por su ID
-@app.route('/clientes/<int:id>', methods=['GET'])
-def get_cliente(id):
+@app.get("/clientes/{id_cliente}")
+def get_cliente(id_cliente: int):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute("SELECT * FROM Clientes WHERE ID_cliente = %s", (id,))
+    cursor.execute("SELECT * FROM Clientes WHERE ID_cliente = %s", (id_cliente,))
     cliente = cursor.fetchone()
     cursor.close()
     conn.close()
 
     if cliente:
-        return jsonify(cliente), 200
-    return jsonify({'message': 'Cliente no encontrado'}), 404
+        return JSONResponse(content=cliente)
+    raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
 
 # Crear un nuevo cliente
-@app.route('/clientes', methods=['POST'])
-def create_cliente():
-    data = request.get_json()
-    if not data or not all(key in data for key in ('Nombre', 'Apellido', 'Email')):
-        return jsonify({"error": "Todos los campos son obligatorios"}), 400
-
+@app.post("/clientes", response_model=dict)
+def create_cliente(cliente: Cliente):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO Clientes (Nombre, Apellido, Email, Fecha_registro)
-        VALUES (%s, %s, %s, NOW())
+        INSERT INTO Clientes (Nombre, Apellido, Email, Telefono, Direccion, Fecha_nacimiento, Fecha_registro)
+        VALUES (%s, %s, %s, %s, %s, %s, NOW())
         RETURNING ID_cliente;
-    """, (data['Nombre'], data['Apellido'], data['Email']))
+    """, (
+    cliente.Nombre, cliente.Apellido, cliente.Email, cliente.Telefono, cliente.Direccion, cliente.Fecha_nacimiento))
     cliente_id = cursor.fetchone()[0]
     conn.commit()
     cursor.close()
     conn.close()
 
-    return jsonify({'ID_cliente': cliente_id, 'message': 'Cliente creado exitosamente'}), 201
+    return {"ID_cliente": cliente_id, "message": "Cliente creado exitosamente"}
 
 
 # Actualizar un cliente existente
-@app.route('/clientes/<int:id>', methods=['PUT'])
-def update_cliente(id):
-    data = request.get_json()
-    if not data or not all(key in data for key in ('Nombre', 'Apellido', 'Email')):
-        return jsonify({"error": "Todos los campos son obligatorios"}), 400
-
+@app.put("/clientes/{id_cliente}", response_model=dict)
+def update_cliente(id_cliente: int, cliente: Cliente):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE Clientes 
-        SET Nombre = %s, Apellido = %s, Email = %s 
+        SET Nombre = %s, Apellido = %s, Email = %s, Telefono = %s, Direccion = %s, Fecha_nacimiento = %s 
         WHERE ID_cliente = %s
-    """, (data['Nombre'], data['Apellido'], data['Email'], id))
+    """, (
+    cliente.Nombre, cliente.Apellido, cliente.Email, cliente.Telefono, cliente.Direccion, cliente.Fecha_nacimiento,
+    id_cliente))
     conn.commit()
     cursor.close()
     conn.close()
 
-    return jsonify({'message': 'Cliente actualizado exitosamente'}), 200
+    return {"message": "Cliente actualizado exitosamente"}
 
 
 # Eliminar un cliente
-@app.route('/clientes/<int:id>', methods=['DELETE'])
-def delete_cliente(id):
+@app.delete("/clientes/{id_cliente}", response_model=dict)
+def delete_cliente(id_cliente: int):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM Clientes WHERE ID_cliente = %s", (id,))
+    cursor.execute("DELETE FROM Clientes WHERE ID_cliente = %s", (id_cliente,))
     conn.commit()
     cursor.close()
     conn.close()
 
-    return jsonify({'message': 'Cliente eliminado exitosamente'}), 200
+    return {"message": "Cliente eliminado exitosamente"}
 
 
-### CRUD para la tabla "Historial_cliente" ###
+# URL base de la API de libros
+LIBROS_API_URL = "http://3.85.121.200:8005"
+
 
 # Obtener historial de un cliente
-@app.route('/clientes/<int:id_cliente>/historial', methods=['GET'])
-def get_historial_cliente(id_cliente):
+@app.get("/clientes/{id_cliente}/historial")
+def get_historial_cliente(id_cliente: int):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute("""
-        SELECT h.ID_historial, h.ID_libro, l.Título, h.Fecha_reserva 
+        SELECT h.ID_historial, h.ID_libro, l.Titulo, h.Fecha_reserva 
         FROM Historial_cliente h 
         JOIN Libros l ON h.ID_libro = l.ID_libro 
         WHERE h.ID_cliente = %s
@@ -118,38 +148,38 @@ def get_historial_cliente(id_cliente):
     historial = cursor.fetchall()
     cursor.close()
     conn.close()
-    return jsonify(historial), 200
+    return JSONResponse(content=historial)
 
 
 # Agregar a historial
-@app.route('/clientes/<int:id_cliente>/historial', methods=['POST'])
-def add_to_historial(id_cliente):
-    data = request.get_json()
-    if not data or 'ID_libro' not in data:
-        return jsonify({"error": "ID_libro es obligatorio"}), 400
+@app.post("/clientes/{id_cliente}/historial")
+async def add_to_historial(id_cliente: int, historial: Historial):
+    # Llamada a la API de libros para obtener el ID_libro
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{LIBROS_API_URL}/libros/{historial.ID_libro}")
+        if response.status_code != 200:
+            raise HTTPException(status_code=404, detail="Libro no encontrado en la API de libros")
 
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO Historial_cliente (ID_cliente, ID_libro, Fecha_reserva)
         VALUES (%s, %s, NOW())
-    """, (id_cliente, data['ID_libro']))
+    """, (id_cliente, historial.ID_libro))
     conn.commit()
     cursor.close()
     conn.close()
 
-    return jsonify({'message': 'Libro agregado al historial exitosamente'}), 201
+    return {"message": "Libro agregado al historial exitosamente"}
 
-
-### CRUD para la tabla "Valoraciones" ###
 
 # Obtener valoraciones de un cliente
-@app.route('/clientes/<int:id_cliente>/valoraciones', methods=['GET'])
-def get_valoraciones_cliente(id_cliente):
+@app.get("/clientes/{id_cliente}/valoraciones")
+def get_valoraciones_cliente(id_cliente: int):
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute("""
-        SELECT v.ID_valoracion, l.Título, v.Puntuacion 
+        SELECT v.ID_valoracion, l.Titulo, v.Puntuacion 
         FROM Valoraciones v 
         JOIN Libros l ON v.ID_libro = l.ID_libro 
         WHERE v.ID_cliente = %s
@@ -157,28 +187,26 @@ def get_valoraciones_cliente(id_cliente):
     valoraciones = cursor.fetchall()
     cursor.close()
     conn.close()
-    return jsonify(valoraciones), 200
+    return JSONResponse(content=valoraciones)
 
 
 # Crear una nueva valoración
-@app.route('/clientes/<int:id_cliente>/valoraciones', methods=['POST'])
-def create_valoracion_cliente(id_cliente):
-    data = request.get_json()
-    if not data or not all(key in data for key in ('ID_libro', 'Puntuacion')):
-        return jsonify({"error": "ID_libro y Puntuacion son obligatorios"}), 400
+@app.post("/clientes/{id_cliente}/valoraciones")
+async def create_valoracion_cliente(id_cliente: int, valoracion: Valoracion):
+    # Llamada a la API de libros para obtener el ID_libro
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{LIBROS_API_URL}/libros/{valoracion.ID_libro}")
+        if response.status_code != 200:
+            raise HTTPException(status_code=404, detail="Libro no encontrado en la API de libros")
 
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO Valoraciones (ID_cliente, ID_libro, Puntuacion)
         VALUES (%s, %s, %s)
-    """, (id_cliente, data['ID_libro'], data['Puntuacion']))
+    """, (id_cliente, valoracion.ID_libro, valoracion.Puntuacion))
     conn.commit()
     cursor.close()
     conn.close()
 
-    return jsonify({'message': 'Valoración creada exitosamente'}), 201
-
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8081)
+    return {"message": "Valoración creada exitosamente"}

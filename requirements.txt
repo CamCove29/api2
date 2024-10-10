@@ -1,8 +1,5 @@
-Flask>=2.0
-Jinja2==3.0.1
-MarkupSafe==2.0.1
-psycopg2-binary>=2.9  # Conector para PostgreSQL
-Flask-Cors>=3.0.10    # Para permitir solicitudes CORS
-Flask-RESTful>=0.3.9   # Para crear APIs RESTful fácilmente
-Flask-SQLAlchemy>=2.5  # Para manejar la base de datos con SQLAlchemy
-python-dotenv>=0.20.0  # Para cargar variables de entorno desde .env
+fastapi==0.95.0
+uvicorn==0.22.0
+psycopg2-binary==2.9.6
+httpx==0.24.0
+pydantic==1.10.7  # Añade esto si necesitas una versión específica
