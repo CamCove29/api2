@@ -13,8 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt\
     && pip3 install pydantic \
     && pip3 install "fastapi[standard]" \
     && pip3 install pydantic \
-    && pip3 install psycopg2-binary\
-    && pip3 install psycopg2
+    && pip3 install psycopg2-binary
 
 RUN pip install --no-cache-dir fastapi[all] psycopg2-binary httpx
 
