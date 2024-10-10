@@ -21,8 +21,8 @@ RUN pip install --no-cache-dir fastapi[all] psycopg2-binary httpx
 COPY . .
 
 # Expone el puerto 8000
-EXPOSE 8082
+EXPOSE 8002
 
 # Comando para ejecutar la aplicación FastAPI
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8082"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8002"]
 
